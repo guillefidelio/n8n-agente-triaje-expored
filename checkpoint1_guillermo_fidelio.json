@@ -1,0 +1,398 @@
+{
+  "name": "Checkpoint 1 - Agente de Triaje EXPORED",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "[ROL Y ÁMBITO]\n\nSos el Agente de Triaje de Soporte para expositores de EXPORED, organizadora de ferias y exposiciones. Tu único ámbito es interpretar mensajes desestructurados de expositores, identificar el problema principal, clasificar la prioridad y registrar una consulta clara y estructurada para que el equipo de atención al expositor pueda actuar.\n\nTemas dentro del ámbito: stand y espacio (medidas, ubicación, armado, desarme, mobiliario), logística (ingreso de mercadería, carga y descarga, acreditaciones y credenciales), servicios técnicos (electricidad, conectividad, iluminación, agua), administración (facturación, pagos, contratos, comprobantes) e información general del evento (fechas, horarios, reglamento para expositores).\n\nCualquier consulta fuera de este ámbito (visitantes, prensa, temas ajenos a EXPORED) no se registra: respondé con cordialidad que este canal es exclusivo para expositores.\n\nNO tenés autorización para: prometer tiempos de resolución, confirmar o modificar reservas de stands, otorgar reembolsos, descuentos o compensaciones, hacer excepciones al reglamento, inventar precios, tarifas, fechas o ubicaciones, modificar o borrar registros existentes, solicitar datos de tarjetas, claves bancarias o contraseñas, brindar asesoramiento legal ni comprometer decisiones comerciales.\n\n[OBJETIVO OPERATIVO]\n\nConvertir cada consulta entrante en un registro estructurado con: nombre del contacto, medio de contacto, empresa expositora, categoría (Stand, Logística, Servicios Técnicos, Administración o Información General), prioridad, resumen del caso, próxima acción recomendada para el equipo y notas adicionales.\n\nAl terminar, confirmá al expositor que su consulta quedó registrada, con la categoría y la prioridad asignadas, y que el equipo de EXPORED lo va a contactar. Confirmá el registro únicamente si la herramienta informa que se completó correctamente.\n\n[REGLAS DE USO DE HERRAMIENTAS]\n\n- Usá la herramienta \"Registrar consulta de expositor\" SOLO cuando tengas datos mínimos suficientes: medio de contacto del expositor, categoría del problema y descripción del inconveniente.\n- Si falta un dato clave, solicitá únicamente la información faltante mediante una pregunta clara antes de registrar.\n- No inventes información. Si un dato no obligatorio no fue provisto, completá el campo con \"No informado\".\n- Registrá cada consulta una sola vez. No uses la herramienta para saludos, agradecimientos ni consultas fuera de ámbito.\n- Clasificá la prioridad como Alta, Media o Baja:\n  - Alta: impide el armado o la participación en el evento, existe una urgencia operativa a menos de 48 horas del inicio, hay un problema de seguridad en el stand, un error de facturación significativo o un expositor estratégico (sponsor o stand principal) requiere intervención.\n  - Media: afecta la operación del stand, pero hay margen para resolverlo.\n  - Baja: consulta informativa o sin urgencia.\n- Si el mensaje mezcla varios problemas, priorizá el de mayor impacto y dejá el resto en Notas.\n- Si la herramienta falla, no afirmes que la consulta fue registrada.\n\n[PROTOCOLO DE ESCALAMIENTO / GUARDRAILS]\n\n- Si el expositor reporta un riesgo de seguridad (eléctrico, estructural o de incendio), la imposibilidad de ingresar al predio, un reclamo formal o legal, la amenaza de cancelar su participación, o se trata de un sponsor o expositor estratégico que requiere intervención, marcá prioridad Alta, empezá el Resumen con \"ESCALAMIENTO\" y recomendá revisión humana inmediata en Próxima acción.\n- Si el expositor pide una acción sensible (cancelar o cambiar un stand, anular una factura, reembolsar un pago, modificar un contrato), no ejecutes ni confirmes esa acción. Registrá la consulta si tenés los datos mínimos e informá: \"El caso requiere revisión humana antes de ejecutar acciones sensibles\".\n- No envíes correos ni mensajes a terceros. Solo registrá la consulta y generá un resumen operativo.\n\n[ESTILO]\n\n- Escribí en español rioplatense estándar, claro y profesional.\n- No uses lenguaje inclusivo con terminaciones en -e, -x o @, ni dobles terminaciones como \"los/las\".\n- Sé breve, específico y orientado a la operación: no más de 5 oraciones por respuesta.",
+          "maxIterations": 10,
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "9dca8e68-12ef-4d54-9396-1f17df203c55",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        240
+      ],
+      "id": "87bd574a-435a-4b37-8831-f12ddb08303f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Registra una consulta de un expositor de EXPORED como una fila nueva en la planilla de triaje de soporte (Google Sheets, pestaña \"Consultas\"). Esa planilla es la bandeja de trabajo del equipo humano de atención al expositor: lo que no se registra acá, nadie lo atiende.\n\nCUÁNDO ACTIVARLA (deben cumplirse todas las condiciones):\n- El mensaje contiene una consulta, pedido, problema o reclamo real de un expositor sobre stand y espacio, logística, servicios técnicos, administración o información del evento.\n- Tenés los datos mínimos: un medio de contacto del expositor (teléfono, correo o usuario de Telegram), la categoría del problema y una descripción concreta del inconveniente.\n- Ya asignaste la prioridad (Alta, Media o Baja) y definiste la próxima acción recomendada para el equipo.\n\nCASOS DE NEGOCIO TÍPICOS:\n- \"No nos llega la electricidad al stand y abrimos mañana\" → Servicios Técnicos, Alta.\n- \"Nos facturaron dos veces el mismo stand\" → Administración, Alta.\n- \"No nos dejan ingresar la mercadería por el portón 3\" → Logística, Alta.\n- \"¿Puedo sumar dos credenciales más para mi equipo?\" → Logística, Media.\n- \"¿A qué hora empieza el armado?\" → Información General, Baja.\n- Riesgo de seguridad, reclamo formal o legal, amenaza de cancelar la participación, sponsor o expositor estratégico → prioridad Alta y el Resumen empieza con \"ESCALAMIENTO\".\n- Pedido de acción sensible (cancelar o cambiar stand, anular factura, reembolso, cambio de contrato) → registrarlo para revisión humana; la herramienta NO ejecuta esas acciones.\n\nCUÁNDO NO ACTIVARLA:\n- Saludos, agradecimientos o mensajes sin una consulta concreta.\n- Consultas de visitantes, prensa o temas ajenos a EXPORED.\n- Cuando falta un dato mínimo: primero hacé una única pregunta clara al expositor.\n- Cuando esa misma consulta ya fue registrada en la conversación (registrar una sola vez).\n\nCÓMO COMPLETAR LOS CAMPOS:\n- No inventes datos. Si un dato no fue provisto, escribí \"No informado\".\n- Si el mensaje mezcla varios problemas, registrá el de mayor impacto en Resumen y el resto en Notas.\n\nQUÉ HACE: agrega una fila con fecha, contacto, empresa, medio de contacto, categoría, prioridad, resumen, próxima acción, notas y estado \"Pendiente\". Solo agrega filas: no lee, no modifica ni borra registros existentes, y no envía mensajes a nadie.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/TU_ID_DE_PLANILLA/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Consultas"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}",
+            "Contacto": "={{ $fromAI('contacto','Nombre y apellido de la persona de contacto del expositor. Si no fue informado, escribir No informado','string') }}",
+            "Empresa": "={{ $fromAI('empresa','Nombre de la empresa expositora. Si no fue informado, escribir No informado','string') }}",
+            "Medio de contacto": "={{ $fromAI('medio_contacto','Teléfono, correo electrónico o usuario de Telegram del expositor','string') }}",
+            "Categoria": "={{ $fromAI('categoria','Exactamente una de: Stand, Logística, Servicios Técnicos, Administración, Información General','string') }}",
+            "Prioridad": "={{ $fromAI('prioridad','Exactamente una de: Alta, Media, Baja. Alta si impide el armado o la participación, faltan menos de 48 horas, hay riesgo de seguridad, error de facturación o expositor estratégico','string') }}",
+            "Resumen": "={{ $fromAI('resumen','Resumen del problema principal en una o dos oraciones. Si es prioridad Alta por escalamiento, empezar con ESCALAMIENTO','string') }}",
+            "Estado": "Pendiente",
+            "Proxima accion": "={{ $fromAI('proxima_accion','Próxima acción recomendada para el equipo de EXPORED, por ejemplo: llamar al expositor, enviar técnico electricista, revisar factura. Si es ESCALAMIENTO, indicar revisión humana inmediata','string') }}",
+            "Notas": "={{ $fromAI('notas','Problemas secundarios o datos adicionales mencionados por el expositor. Si no hay, escribir No informado','string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Contacto",
+              "displayName": "Contacto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Empresa",
+              "displayName": "Empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Medio de contacto",
+              "displayName": "Medio de contacto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Categoria",
+              "displayName": "Categoria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Prioridad",
+              "displayName": "Prioridad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resumen",
+              "displayName": "Resumen",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Proxima accion",
+              "displayName": "Proxima accion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notas",
+              "displayName": "Notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        624,
+        240
+      ],
+      "id": "9bc4586f-8777-43a9-ba59-ea7887c178b8",
+      "name": "Registrar consulta de expositor",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HcXrOfRD1WwaMeOK",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "TU_CORREO@ejemplo.com",
+        "subject": "=[EXPORED Triaje] Log del agente - {{ $now.toFormat('yyyy-MM-dd HH:mm') }}",
+        "emailType": "text",
+        "message": "=REPORTE DE OBSERVABILIDAD - Agente de Triaje EXPORED\n\nFecha: {{ $now.toFormat('yyyy-MM-dd HH:mm') }}\nCanal: Telegram\nChat ID: {{ $('EXPOREDY asistente').item.json.message.chat.id }}\nExpositor: {{ $('EXPOREDY asistente').item.json.message.from.first_name }} {{ $('EXPOREDY asistente').item.json.message.from.last_name || '' }} (@{{ $('EXPOREDY asistente').item.json.message.from.username || 'sin usuario' }})\n\nMENSAJE DEL EXPOSITOR:\n{{ $('EXPOREDY asistente').item.json.message.text }}\n\nRESPUESTA DEL AGENTE:\n{{ $json.output }}\n\nHERRAMIENTAS USADAS: {{ ($json.intermediateSteps || []).length }}\n\nEXECUTION LOG (pasos intermedios):\n{{ JSON.stringify($json.intermediateSteps || [], null, 2) }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        928,
+        0
+      ],
+      "id": "26fe4f3f-6185-48dd-bee9-77e3748ad179",
+      "name": "Log de Observabilidad (Gmail)",
+      "webhookId": "5b7db639-3e81-4c1c-aebb-8cbd8a4cbc87",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "tOdyqJE4JeHlYIsR",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "92915dd9-440b-47d9-845c-210216ec920a",
+      "name": "EXPOREDY asistente",
+      "webhookId": "b8f62bd2-9b3f-4a5b-82b3-8fc8a9a5d868",
+      "credentials": {
+        "telegramApi": {
+          "id": "7OanIXo3WWlnxUm6",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 1. Disparador\nCaptura el mensaje inicial del expositor desde el chat.",
+        "height": 360,
+        "width": 330,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        -160
+      ],
+      "id": "d6c05a59-c01b-4215-bf8b-a5d53361f08a",
+      "name": "Nota 1 - Disparador"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Cerebro / Razonamiento\nAI Agent (Tools Agent) con System Prompt de Triaje EXPORED.\nGuardrail: máximo 10 iteraciones.\nModelo: OpenAI Chat Model.",
+        "height": 580,
+        "width": 340,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -160
+      ],
+      "id": "1adcedda-4011-41d2-ba2c-d5baeb55c95a",
+      "name": "Nota 2 - Cerebro"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Herramienta (Tool)\nGoogle Sheets: registra la consulta solo cuando el agente lo decide.",
+        "height": 340,
+        "width": 300,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        528,
+        80
+      ],
+      "id": "a6af7e30-6542-4b7c-970e-8625633ee970",
+      "name": "Nota 3 - Herramienta"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Observabilidad\nLog del razonamiento por Gmail y respuesta final al expositor.",
+        "height": 360,
+        "width": 460,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        864,
+        -160
+      ],
+      "id": "4911937e-3b14-429c-9003-ff2f932a7842",
+      "name": "Nota 4 - Observabilidad"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('EXPOREDY asistente').item.json.message.chat.id }}",
+        "text": "=Reporte de Observación - Agente de Triage de Soporte:\n{{ $('AI Agent').item.json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1152,
+        0
+      ],
+      "id": "43ec2eb3-3ade-4eb6-8ebb-5dd82cb19a0c",
+      "name": "Send a text message",
+      "webhookId": "7a2ce7cf-265e-484a-b16a-63d814713e77",
+      "credentials": {
+        "telegramApi": {
+          "id": "7OanIXo3WWlnxUm6",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar consulta de expositor": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Log de Observabilidad (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log de Observabilidad (Gmail)": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EXPOREDY asistente": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "237eb624-3d08-4670-bc44-8e615c859dbd",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
