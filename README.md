@@ -9,7 +9,7 @@ Repositorio de las entregas del curso de Agentes de IA de Coderhouse. Es un solo
 | M1 | Agente base y motor de razonamiento | [`M01-agente-base`](./M01-agente-base) | ✅ Entregado |
 | M2 | Multi-agente (Manager + Workers) | — | Pendiente |
 | M3 | Memoria y contexto (Airtable por Session_ID) | — | Pendiente |
-| M4 | Integraciones vía OAuth2 | — | Pendiente |
+| M4 | Integraciones vía OAuth2 (Gmail · HubSpot · Slack) | [`M04-integraciones`](./M04-integraciones) | ✅ Entregado |
 | M5 | RAG / base documental | — | Pendiente |
 | M6 | Voz (STT / TTS) | — | Pendiente |
 | M11 | Proyecto Final Integrador | — | Pendiente |
@@ -21,6 +21,11 @@ Cada carpeta contiene el `.json` exportado de n8n de esa entrega y un `README.md
 ```
 M01-agente-base/
 ├── checkpoint1_guillermo_fidelio.json
+└── README.md
+
+M04-integraciones/
+├── checkpoint4_guillermo_fidelio.json
+├── credentials_n8n.jpg
 └── README.md
 ```
 
